@@ -3,7 +3,7 @@
 // mouse drag looks around, wheel changes pace.
 import * as THREE from 'three';
 
-export const PACES = [4, 8, 14, 22, 35, 60];   // m/s
+export const PACES = [12, 22, 35, 55, 80, 120, 180];   // m/s
 
 export class Walker {
   constructor() {
@@ -12,7 +12,7 @@ export class Walker {
     this.yaw = 0;          // 0 = north (-Z), positive = turned left (counter-clockwise from above)
     this.pitch = -0.18;    // look angle
     this.yawRate = 0;
-    this.paceIdx = 2;
+    this.paceIdx = 2;          // 35 m/s = 126 km/h
     this.minAGL = 30;
     this.crashed = 0; this.stall = false; // HUD compatibility
   }
@@ -32,16 +32,16 @@ export class Walker {
     dt = Math.min(dt, 0.05);
     // smooth turning
     const k = 1 - Math.exp(-dt * 4);
-    this.yawRate += ((inp.turn || 0) * 0.75 - this.yawRate) * k;
+    this.yawRate += ((inp.turn || 0) * 1.25 - this.yawRate) * k;
     this.yaw += this.yawRate * dt + (inp.lookYaw || 0);
-    this.pitch = THREE.MathUtils.clamp(this.pitch + (inp.look || 0) * 0.7 * dt + (inp.lookPitch || 0), -1.45, 0.7);
+    this.pitch = THREE.MathUtils.clamp(this.pitch + (inp.look || 0) * 1.0 * dt + (inp.lookPitch || 0), -1.45, 0.7);
     // gliding motion
     const f = this.forward(), r = this.right();
     const target = new THREE.Vector3()
       .addScaledVector(f, (inp.fwd || 0) * this.pace)
       .addScaledVector(r, (inp.strafe || 0) * this.pace);
-    target.y = (inp.up || 0) * Math.max(5, this.pace * 0.6);
-    this.vel.lerp(target, 1 - Math.exp(-dt * 1.6));
+    target.y = (inp.up || 0) * Math.max(15, this.pace * 0.7);
+    this.vel.lerp(target, 1 - Math.exp(-dt * 2.6));
     this.pos.addScaledVector(this.vel, dt);
     // soft floor: never touch roofs or ground, just float up gently
     const floor = floorAt(this.pos.x, this.pos.z) + this.minAGL;
@@ -58,7 +58,7 @@ export class Tour {
   constructor(points, heightAt) {
     this.curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, Math.max(p.alt, heightAt(p.x, p.z) + 90), p.z)), true, 'centripetal', 0.5);
     this.length = this.curve.getLength();
-    this.u = 0; this.active = false; this.speed = 13;
+    this.u = 0; this.active = false; this.speed = 32;
     this.route = points;
   }
   start(walker) {
@@ -71,15 +71,15 @@ export class Tour {
   step(dt, walker) {
     this.u = (this.u + this.speed * dt / this.length) % 1;
     const p = this.curve.getPointAt(this.u);
-    const ahead = this.curve.getPointAt((this.u + 60 / this.length) % 1);
+    const ahead = this.curve.getPointAt((this.u + 120 / this.length) % 1);
     // ease in from wherever the walker was
-    this.joinT = Math.min(1, this.joinT + dt / 6);
+    this.joinT = Math.min(1, this.joinT + dt / 4);
     const e = this.joinT * this.joinT * (3 - 2 * this.joinT);
     walker.pos.lerpVectors(this.join, p, e);
     const dx = ahead.x - p.x, dz = ahead.z - p.z;
     const wantYaw = Math.atan2(-dx, -dz);
     let d = wantYaw - walker.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
-    walker.yaw += d * (1 - Math.exp(-dt * 1.2));
+    walker.yaw += d * (1 - Math.exp(-dt * 2.0));
     walker.pitch += (-0.3 - walker.pitch) * (1 - Math.exp(-dt * 0.8));
     walker.vel.set(dx, 0, dz).normalize().multiplyScalar(this.speed);
   }

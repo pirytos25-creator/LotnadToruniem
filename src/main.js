@@ -10,6 +10,7 @@ import { Atmosphere } from './sky.js';
 import { makeFacadeAtlas, makeRoofAtlas, makeWaterNormals, makeGlowSprite } from './textures.js';
 import { facadeMaterial, roofMaterial, shared } from './materials.js';
 import { Walker, Tour } from './walk.js';
+import { Fun } from './fun.js';
 import { HUD } from './hud.js';
 import { Google3D } from './google3d.js';
 
@@ -147,6 +148,23 @@ async function main() {
     p.top = best ? best.top : terrain.heightAt(p.x, p.z) + 25;
   }
 
+  // ----------------------------------------------------------------- extras: pierniki, birds, balloons, boat, fireworks
+  const toastBox = $('toasts');
+  const toast = (title, text) => {
+    const el = document.createElement('div'); el.className = 'toast';
+    el.innerHTML = `<b></b><span></span>`; el.querySelector('b').textContent = title; el.querySelector('span').textContent = text;
+    toastBox.appendChild(el);
+    setTimeout(() => el.classList.add('out'), 7000); setTimeout(() => el.remove(), 7800);
+    while (toastBox.children.length > 3) toastBox.firstChild.remove();
+  };
+  const fun = new Fun(scene, hud.places, store, toast);
+  fun.placeY(p => (p.top || terrain.heightAt(p.x, p.z) + 25) + 32);
+  const river = city.water.reduce((a, b) => (b.p.length > a.p.length ? b : a));
+  fun.setHeights((x, z) => terrain.heightAt(x, z), (x, z) => river.lvl[0] * x + river.lvl[1] * z + river.lvl[2]);
+  { const seen = new Set(); fun.group.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial && !seen.has(o.material)) { seen.add(o.material); setupMat(o.material); } }); }
+  const updateCounter = () => { $('pierCount').textContent = `${fun.collected.size}/${fun.pierniki.length}`; };
+  updateCounter();
+
   // ----------------------------------------------------------------- post (bloom at night)
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
@@ -170,16 +188,18 @@ async function main() {
   }
   applyHour(hour, true);
   todEl.addEventListener('input', () => applyHour(parseFloat(todEl.value)));
-  const opt = { shadows: store.get('shadows', quality.value !== 'low'), clouds: store.get('clouds', true), trees: store.get('trees', true), labels: store.get('labels', true) };
+  const opt = { shadows: store.get('shadows', quality.value !== 'low'), clouds: store.get('clouds', true), trees: store.get('trees', true), labels: store.get('labels', true), fun: store.get('fun', true), sound: store.get('sound', true) };
   const applyOpts = () => {
     for (const l of csm.lights) l.castShadow = opt.shadows;
     renderer.shadowMap.enabled = opt.shadows;
     atmo.setClouds(opt.clouds); hud.labelsOn = opt.labels;
     $('optShadows').checked = opt.shadows; $('optClouds').checked = opt.clouds; $('optTrees').checked = opt.trees; $('optLabels').checked = opt.labels;
+    $('optFun').checked = opt.fun; $('optSound').checked = opt.sound; fun.sound.on = opt.sound;
     scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
   };
   applyOpts();
-  for (const [id, k] of [['optShadows', 'shadows'], ['optClouds', 'clouds'], ['optTrees', 'trees'], ['optLabels', 'labels']]) {
+  $('resetHunt').addEventListener('click', () => { fun.resetHunt(); updateCounter(); toast('🍪 Polowanie od nowa', 'Nad zabytkami znów unoszą się pierniki.'); });
+  for (const [id, k] of [['optShadows', 'shadows'], ['optClouds', 'clouds'], ['optTrees', 'trees'], ['optLabels', 'labels'], ['optFun', 'fun'], ['optSound', 'sound']]) {
     $(id).addEventListener('change', (e) => { opt[k] = e.target.checked; store.set(k, opt[k]); applyOpts(); });
   }
   $('quality').addEventListener('change', (e) => { store.set('quality', e.target.value); location.reload(); });
@@ -216,15 +236,21 @@ async function main() {
   let injected = null;
   const toggleTour = () => {
     if (autopilot.active) autopilot.stop(); else autopilot.start(walker);
-    $('tourName').textContent = autopilot.active ? 'Zatrzymaj spacer' : 'Spacer z przewodnikiem';
+    $('tourName').textContent = autopilot.active ? 'Stop' : 'Przewodnik';
     document.querySelector('[data-act=tour]').classList.toggle('on', autopilot.active);
   };
+  const photo = { on: false, capture: false };
+  const photoMode = (on) => { photo.on = on; for (const id of ['hud']) $(id).classList.toggle('photo', on); if (on) toast('📷 Tryb zdjęć', 'P przywraca interfejs, K zapisuje zdjęcie.'); };
   const panels = { help: $('help'), settings: $('settings'), welcome: $('welcome') };
   const toggle = (name, force) => { const p = panels[name]; p.hidden = force !== undefined ? !force : !p.hidden; };
   addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
     keys.add(e.code);
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+    if (e.code === 'KeyB') { fun.sound.ensure(); fun.show(camera.position, 5); }
+    if (e.code === 'KeyP') photoMode(!photo.on);
+    if (e.code === 'KeyK') photo.capture = true;
+    if (e.code === 'KeyM') { opt.sound = !opt.sound; store.set('sound', opt.sound); applyOpts(); toast(opt.sound ? '🔊 Dźwięk włączony' : '🔇 Dźwięk wyłączony', ''); }
     if (e.code === 'Equal' || e.code === 'NumpadAdd') walker.setPace(1);
     if (e.code === 'Minus' || e.code === 'NumpadSubtract') walker.setPace(-1);
     if (e.code === 'KeyT') toggleTour();
@@ -242,6 +268,8 @@ async function main() {
     const a = b.dataset.act;
     if (a === 'help') toggle('help'); if (a === 'settings') toggle('settings');
     if (a === 'tour') toggleTour();
+    if (a === 'photo') photo.capture = true;
+    if (a === 'fireworks') { fun.sound.ensure(); fun.show(camera.position, 6); }
     b.blur();
   }));
   $('minimap').addEventListener('click', (ev) => {
@@ -299,7 +327,7 @@ async function main() {
     if (k.has('KeyC') || k.has('KeyF')) inp.up -= 1;
     if (k.has('ArrowUp')) inp.look += 1;
     if (k.has('ArrowDown')) inp.look -= 1;
-    if (k.has('ShiftLeft') || k.has('ShiftRight')) { inp.fwd *= 2; inp.strafe *= 2; }
+    if (k.has('ShiftLeft') || k.has('ShiftRight')) { inp.fwd *= 2.5; inp.strafe *= 2.5; }
     if (isTouch) {
       inp.turn += -touch.x; inp.fwd += -touch.y;
       if (touch.thr !== null) inp.up += Math.abs(touch.thr - 0.5) > 0.12 ? (touch.thr - 0.5) * 2 : 0;
@@ -313,7 +341,7 @@ async function main() {
     getYaw: () => walker.heading(), getSpeed: () => walker.speed,
     getPos: () => walker.pos.toArray(), resetPose: respawn,
     hop: (x, z, y, yaw = 0, pitch = -0.3) => { walker.reset(x, y ?? terrain.heightAt(x, z) + 150, z, yaw, pitch); if (window.__snap) window.__snap.cam = true; },
-    setHour: (h) => applyHour(h, true), walker, camera, scene, renderer, city3d, obstacles, terrain, google,
+    setHour: (h) => applyHour(h, true), get fun() { return fun; }, walker, camera, scene, renderer, city3d, obstacles, terrain, google,
   };
 
   // ----------------------------------------------------------------- resize
@@ -360,6 +388,9 @@ async function main() {
     camera.updateProjectionMatrix();
 
     // world updates
+    const before = fun.collected.size;
+    fun.update(dt, camera.position, atmo.night, opt.fun);
+    if (fun.collected.size !== before) updateCounter();
     atmo.update(dt, camera.position);
     if (!google.active) {
       ground.update(camera.position);
@@ -376,6 +407,16 @@ async function main() {
     // render
     if (atmo.night > 0.3 && quality.value !== 'low') { bloom.strength = 0.55 + atmo.night * 0.35; composer.render(); }
     else renderer.render(scene, camera);
+    if (photo.capture) {
+      photo.capture = false;
+      canvas.toBlob((b) => {
+        if (!b) return;
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = `torun-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        toast('📸 Zdjęcie zapisane', 'Znajdziesz je w folderze Pobrane.');
+      }, 'image/png');
+    }
     frameNo++;
     if (!maxFrames || frameNo < maxFrames) requestAnimationFrame(frame);
     else window.__rendered = true;

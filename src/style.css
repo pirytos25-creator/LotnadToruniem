@@ -139,3 +139,16 @@ kbd { font: 700 12px 'JetBrains Mono', monospace; min-width: 26px; text-align: c
 
 #paceVal { color: var(--ink); font-weight: 700; margin-left: 4px; letter-spacing: 0; }
 .gauge.small:nth-of-type(4) { display: none; }
+
+.hud-top { display: flex; gap: 8px; align-items: center; }
+.pier-chip { background: var(--glass); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: 10px; height: 34px; padding: 0 12px;
+  display: flex; align-items: center; gap: 6px; font: 700 14px 'JetBrains Mono', monospace; color: var(--accent); white-space: nowrap; }
+#toasts { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; width: min(520px, calc(100vw - 32px)); }
+.toast { width: 100%; background: var(--glass-strong); backdrop-filter: blur(12px); border: 1px solid rgba(242,193,78,.45); border-radius: 14px; padding: 10px 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.35); animation: pop .35s ease; transition: opacity .7s, transform .7s; }
+.toast b { display: block; font-size: 15px; color: var(--accent); }
+.toast span { display: block; font-size: 13px; line-height: 1.45; color: var(--ink); margin-top: 3px; }
+.toast span:empty { display: none; }
+.toast.out { opacity: 0; transform: translateY(-8px); }
+#hud.photo > *:not(#toasts) { display: none !important; }
+#resetHunt { margin-top: 6px; }

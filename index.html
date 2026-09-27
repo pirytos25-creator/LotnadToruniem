@@ -31,7 +31,9 @@
 <div id="hud" hidden>
   <div class="hud-top">
     <div class="compass"><div id="compassTape"></div><div class="compass-mark"></div></div>
+    <div class="pier-chip" title="Pierniki zebrane nad zabytkami: przeleć przez złote serca">🍪 <span id="pierCount">0/0</span></div>
   </div>
+  <div id="toasts"></div>
   <div class="hud-left">
     <div class="gauge"><span class="g-lbl">PRĘDKOŚĆ</span><span id="spd" class="g-val">0</span><span class="g-unit">km/h</span></div>
     <div class="gauge"><span class="g-lbl">WYSOKOŚĆ</span><span id="alt" class="g-val">0</span><span class="g-unit">m n.p.m.</span></div>
@@ -47,7 +49,9 @@
   <div id="warn" class="warn" hidden></div>
   <div class="hud-bottom">
     <button class="btn" data-act="help" title="Sterowanie (H)">? Sterowanie</button>
-    <button class="btn" data-act="tour" title="Spacer z przewodnikiem (T)">🕊 <span id="tourName">Spacer z przewodnikiem</span></button>
+    <button class="btn" data-act="tour" title="Spacer z przewodnikiem (T)">🕊 <span id="tourName">Przewodnik</span></button>
+    <button class="btn" data-act="photo" title="Zapisz zdjęcie (K), tryb zdjęć bez interfejsu: P">📸 Zdjęcie</button>
+    <button class="btn" data-act="fireworks" title="Fajerwerki nad Wisłą (B)">🎆 Fajerwerki</button>
     <button class="btn" data-act="settings" title="Ustawienia (O)">⚙ Ustawienia</button>
   </div>
   <div id="labels"></div>
@@ -104,9 +108,13 @@
     <div><kbd>mysz</kbd><span>przeciągnij, by się rozejrzeć · kółko = tempo spaceru</span></div>
     <div><kbd>Shift</kbd><span>chwilowo szybciej</span></div>
     <div><kbd>T</kbd><span>spacer z przewodnikiem nad Starówką i Wisłą</span></div>
+    <div><kbd>B</kbd><span>fajerwerki nad Wisłą</span></div>
+    <div><kbd>P</kbd><kbd>K</kbd><span>tryb zdjęć bez interfejsu / zapisz zdjęcie</span></div>
+    <div><kbd>M</kbd><span>dźwięk włącz / wyłącz</span></div>
     <div><kbd>N</kbd><span>dzień ↔ noc</span></div>
     <div><kbd>Home</kbd><span>wróć do punktu startu</span></div>
   </div>
+  <p class="muted"><b>🍪 Polowanie na pierniki:</b> nad każdym z 24 zabytków unosi się złote piernikowe serce. Przeleć przez nie, a dostaniesz ciekawostkę o tym miejscu. Zbierz wszystkie, a Toruń odpali fajerwerki.</p>
   <p class="muted">Nie ma tu rozbijania się: unosisz się spokojnie nad miastem i nie zejdziesz niżej niż kilkadziesiąt metrów nad dachy. Na telefonie lewy drążek to ruch, prawy suwak to wysokość.</p>
   <button class="btn primary" data-close="help">Ruszamy</button>
 </div>
@@ -122,6 +130,9 @@
   <label class="row chk"><input id="optClouds" type="checkbox" checked> Chmury</label>
   <label class="row chk"><input id="optTrees" type="checkbox" checked> Drzewa</label>
   <label class="row chk"><input id="optLabels" type="checkbox" checked> Nazwy zabytków</label>
+  <label class="row chk"><input id="optFun" type="checkbox" checked> Pierniki, ptaki, balony i statek</label>
+  <label class="row chk"><input id="optSound" type="checkbox" checked> Dźwięk</label>
+  <button class="btn" id="resetHunt">🍪 Zbieraj pierniki od nowa</button>
   <div class="sep"></div>
   <div class="g3d">
     <div class="g3d-h">Tryb fotorealistyczny (Google 3D Tiles)</div>
