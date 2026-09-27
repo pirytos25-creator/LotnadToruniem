@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Outfit", "Avenir Next", system-ui, sans-serif;
+
+  --color-ink: #1c1915;
+  --color-paper: #f4efe4;
+  --color-panel: #fbf7ef;
+  --color-brick: #b5523a;
+  --color-brick-deep: #7c3428;
+  --color-river: #1f6a72;
+  --color-muted: #5e584f;
+  --color-line: #d9d0c2;
+
+  --radius-panel: 1.25rem;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-river);
+    outline-offset: 2px;
+  }
+}
+
+.nt-map,
+.leaflet-container.nt-map {
+  height: 100%;
+  width: 100%;
+  background: var(--color-line);
+  font-family: var(--font-sans);
+}
+
+.nt-pin.leaflet-div-icon {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-panel);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgb(28 25 21 / 0.28);
+}
+
+.nt-pin.is-on {
+  border-color: var(--color-river);
+}
+
+.nt-pin.is-sel {
+  background: var(--color-brick);
+  color: var(--color-paper);
+  border-color: var(--color-brick-deep);
+}
+
+.nt-pin.is-dim {
+  opacity: 0.45;
+}
+
+.leaflet-control-attribution {
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font-size: 0.65rem;
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-ink);
+}
