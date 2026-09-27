@@ -1,12 +1,4 @@
-node_modules
-.vercel
-.tanstack
-dist
-screenshots
-artifacts
-*.log
+tools/raw/
+node_modules/
 .DS_Store
-
-# sandbox chrome and generated brand scraps; keep the auth flag the dev server reads
-.grok/*
-!.grok/app-env.json
+*.log

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lot nad Toruniem</title>
+<meta name="description" content="Przeglądarkowy lot nad realistycznym Toruniem: budynki z OpenStreetMap, zdjęcia lotnicze, model terenu, Wisła, mosty i zabytki Starówki.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23132033'/%3E%3Cpath d='M8 36l20-4 6-18h5l-2 17 17-3 2 4-19 7 3 10h-4l-6-8-20 2z' fill='%23f2c14e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.js", "extras": "./vendor/extras.js" } }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<!-- loading -->
+<div id="loader">
+  <div class="load-card">
+    <div class="load-title">Lot nad Toruniem</div>
+    <div class="load-sub">Wczytuję miasto z OpenStreetMap, zdjęć lotniczych i modelu terenu</div>
+    <div class="bar"><i id="loadbar"></i></div>
+    <div id="loadmsg" class="load-msg">Start…</div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" hidden>
+  <div class="hud-top">
+    <div class="compass"><div id="compassTape"></div><div class="compass-mark"></div></div>
+  </div>
+  <div class="hud-left">
+    <div class="gauge"><span class="g-lbl">PRĘDKOŚĆ</span><span id="spd" class="g-val">0</span><span class="g-unit">km/h</span></div>
+    <div class="gauge"><span class="g-lbl">WYSOKOŚĆ</span><span id="alt" class="g-val">0</span><span class="g-unit">m n.p.m.</span></div>
+    <div class="gauge small"><span class="g-lbl">NAD ZIEMIĄ</span><span id="agl" class="g-val">0</span><span class="g-unit">m</span></div>
+    <div class="gauge small"><span class="g-lbl">WZNOSZENIE</span><span id="vsi" class="g-val">0</span><span class="g-unit">m/s</span></div>
+    <div class="throttle"><span class="g-lbl">GAZ</span><div class="thr-bar"><i id="thr"></i></div></div>
+  </div>
+  <div id="place" class="place" hidden>
+    <img id="placeImg" alt="">
+    <div class="place-txt"><div class="place-k">W pobliżu</div><div id="placeName" class="place-n"></div><div id="placeDist" class="place-d"></div></div>
+  </div>
+  <div class="minimap-wrap"><canvas id="minimap" width="220" height="220"></canvas><div class="mm-hint">kliknij, by przelecieć</div></div>
+  <div id="warn" class="warn" hidden></div>
+  <div class="hud-bottom">
+    <button class="btn" data-act="help" title="Sterowanie (H)">? Sterowanie</button>
+    <button class="btn" data-act="cam" title="Kamera (C)">🎥 <span id="camName">Pościg</span></button>
+    <button class="btn" data-act="tour" title="Wycieczka automatyczna (T)">✈ <span id="tourName">Wycieczka</span></button>
+    <button class="btn" data-act="settings" title="Ustawienia (O)">⚙ Ustawienia</button>
+  </div>
+  <div id="labels"></div>
+  <div class="attrib">Zdjęcia lotnicze: Esri World Imagery · Budynki © OpenStreetMap (ODbL) · Teren: AWS Terrain Tiles · Fotografie: Wikimedia Commons <span id="gAttrib"></span></div>
+  <div id="fps" class="fps"></div>
+</div>
+
+<!-- welcome / mode choice -->
+<div id="welcome" class="panel wide" hidden>
+  <div class="panel-h">Jak chcesz zobaczyć Toruń? <button class="x" data-close="welcome">×</button></div>
+  <div class="modes">
+    <div class="mode">
+      <div class="mode-badge gold">Najbardziej realistyczny</div>
+      <div class="mode-t">Fotorealistyczny 3D</div>
+      <p class="muted">Prawdziwa fotogrametria Google: każda kamienica, gotycki szczyt, drzewo i samochód tak, jak wyglądają naprawdę. Wklej darmowy token Cesium ion (bez karty) albo klucz Google Maps Platform.</p>
+      <input id="gkey2" type="password" placeholder="Klucz Google (AIza…) albo token Cesium ion (eyJ…)" autocomplete="off" spellcheck="false">
+      <button id="gOn2" class="btn primary">Leć nad prawdziwym Toruniem</button>
+      <details class="how" open><summary>Najprościej: darmowy token Cesium ion (bez karty, ok. 3 minuty)</summary>
+        <ol>
+          <li>Załóż darmowe konto na <a href="https://ion.cesium.com/signup" target="_blank" rel="noopener">ion.cesium.com/signup</a> (plan Community).</li>
+          <li>W <a href="https://ion.cesium.com/assetdepot/2275207" target="_blank" rel="noopener">Asset Depot</a> otwórz „Google Photorealistic 3D Tiles” i kliknij <b>Add to my assets</b>.</li>
+          <li>W <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">Access Tokens</a> skopiuj <b>Default Token</b> (zaczyna się od <code>eyJ</code>) i wklej go powyżej.</li>
+        </ol>
+      </details>
+      <details class="how"><summary>Albo klucz Google Maps Platform</summary>
+        <ol>
+          <li>Wejdź na <a href="https://console.cloud.google.com/apis/library/tile.googleapis.com" target="_blank" rel="noopener">console.cloud.google.com → Map Tiles API</a> i zaloguj się kontem Google.</li>
+          <li>Utwórz projekt (np. „Lot nad Toruniem”) i kliknij <b>Włącz</b> przy Map Tiles API. Google poprosi o podpięcie karty do rozliczeń, ale darmowy limit w zupełności wystarcza do latania.</li>
+          <li>Wejdź w <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Dane logowania → Utwórz dane logowania → Klucz API</a> i skopiuj klucz.</li>
+          <li>Dla bezpieczeństwa ogranicz klucz do <b>Map Tiles API</b> i do adresu Twojej strony (np. <code>twojlogin.github.io/*</code>).</li>
+        </ol>
+        <p class="muted">Klucz zostaje tylko w tej przeglądarce (localStorage). Nie trafia do repozytorium.</p>
+      </details>
+    </div>
+    <div class="mode">
+      <div class="mode-badge">Bez klucza</div>
+      <div class="mode-t">Rekonstrukcja z map</div>
+      <p class="muted">15,5 tys. budynków z OpenStreetMap z gotyckimi szczytami Starówki, dachy ze zdjęcia lotniczego, Wisła, mosty, mury, 147 tys. drzew, dzień i noc. Działa od razu, także offline.</p>
+      <button id="modeRecon" class="btn">Leć w rekonstrukcji</button>
+    </div>
+  </div>
+  <div id="gStatus2" class="muted"></div>
+</div>
+
+<!-- help -->
+<div id="help" class="panel" hidden>
+  <div class="panel-h">Sterowanie <button class="x" data-close="help">×</button></div>
+  <div class="keys">
+    <div><kbd>W</kbd><kbd>S</kbd><span>gaz / hamowanie</span></div>
+    <div><kbd>A</kbd><kbd>D</kbd><span>przechył w lewo / prawo (skręt)</span></div>
+    <div><kbd>↑</kbd><kbd>↓</kbd><span>nos w górę / w dół</span></div>
+    <div><kbd>Q</kbd><kbd>E</kbd><span>ster kierunku</span></div>
+    <div><kbd>C</kbd><span>kamera: pościg / kokpit / orbita / kinowa</span></div>
+    <div><kbd>T</kbd><span>wycieczka automatyczna nad zabytkami</span></div>
+    <div><kbd>N</kbd><span>dzień ↔ noc</span></div>
+    <div><kbd>R</kbd><span>restart nad Wisłą</span></div>
+    <div><kbd>H</kbd><span>ta pomoc</span></div>
+    <div><kbd>mysz</kbd><span>przeciągnij, by rozejrzeć się; kółko = odległość kamery</span></div>
+  </div>
+  <p class="muted">Na telefonie: lewa połowa ekranu to drążek, prawa to gaz.</p>
+  <button class="btn primary" data-close="help">Lecimy!</button>
+</div>
+
+<!-- settings -->
+<div id="settings" class="panel" hidden>
+  <div class="panel-h">Ustawienia <button class="x" data-close="settings">×</button></div>
+  <label class="row">Pora dnia <input id="tod" type="range" min="0" max="24" step="0.05" value="16.5"><span id="todVal">16:30</span></label>
+  <label class="row">Jakość grafiki
+    <select id="quality"><option value="low">Niska</option><option value="med">Średnia</option><option value="high" selected>Wysoka</option></select>
+  </label>
+  <label class="row chk"><input id="optShadows" type="checkbox" checked> Cienie</label>
+  <label class="row chk"><input id="optClouds" type="checkbox" checked> Chmury</label>
+  <label class="row chk"><input id="optTrees" type="checkbox" checked> Drzewa</label>
+  <label class="row chk"><input id="optLabels" type="checkbox" checked> Nazwy zabytków</label>
+  <div class="sep"></div>
+  <div class="g3d">
+    <div class="g3d-h">Tryb fotorealistyczny (Google 3D Tiles)</div>
+    <p class="muted">Prawdziwa fotogrametria 3D Torunia. Wklej darmowy token Cesium ion (z dodanym assetem „Google Photorealistic 3D Tiles”) albo klucz Google Maps Platform z włączonym <b>Map Tiles API</b>. Zostaje tylko w tej przeglądarce.</p>
+    <input id="gkey" type="password" placeholder="Klucz Google (AIza…) albo token Cesium ion (eyJ…)" autocomplete="off" spellcheck="false">
+    <div class="row-btns"><button id="gOn" class="btn primary">Włącz Google 3D</button><button id="gOff" class="btn">Wróć do rekonstrukcji</button></div>
+    <div id="gStatus" class="muted"></div>
+    <button class="btn" id="openWelcome" style="margin-top:10px">Wybór trybu i instrukcja klucza</button>
+  </div>
+</div>
+
+<!-- touch controls -->
+<div id="touch" hidden><div id="stick"><i></i></div><div id="tthr"><i></i></div></div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
