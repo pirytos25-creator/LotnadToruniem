@@ -9,8 +9,7 @@ import { buildBridges } from './bridges.js';
 import { Atmosphere } from './sky.js';
 import { makeFacadeAtlas, makeRoofAtlas, makeWaterNormals, makeGlowSprite } from './textures.js';
 import { facadeMaterial, roofMaterial, shared } from './materials.js';
-import { buildPlane } from './plane.js';
-import { Flight, Autopilot } from './flight.js';
+import { Walker, Tour } from './walk.js';
 import { HUD } from './hud.js';
 import { Google3D } from './google3d.js';
 
@@ -28,12 +27,14 @@ function progress(frac, msg) {
 }
 const tick = () => new Promise(r => setTimeout(r, 0));
 
-const START = { x: -560, z: 420, y: 230, hdg: -0.2 }; // south of the Vistula, nose towards the Old Town
+// Start above Kępa Bazarowa, looking north at the classic Old Town panorama across the Vistula
+const START = { x: -390, z: -330, y: 150, yaw: 0, pitch: -0.2 };
+// Calm tour: along the river, over the Old Town and the New Town, back along the walls
 const ROUTE = [
-  { x: -1600, z: -560, alt: 230 }, { x: -700, z: -560, alt: 170, name: 'Most Piłsudskiego' },
-  { x: -230, z: -700, alt: 165 }, { x: 320, z: -760, alt: 180 }, { x: 150, z: -1150, alt: 185 },
-  { x: -20, z: -1130, alt: 175 }, { x: -430, z: -1010, alt: 165 }, { x: -600, z: -760, alt: 160 },
-  { x: -900, z: -1150, alt: 190 }, { x: -1500, z: -1800, alt: 260 }, { x: -2300, z: -1100, alt: 260 },
+  { x: -1300, z: -420, alt: 150 }, { x: -700, z: -470, alt: 140 }, { x: -250, z: -560, alt: 140 },
+  { x: 150, z: -700, alt: 150 }, { x: 250, z: -980, alt: 160 }, { x: 60, z: -1220, alt: 160 },
+  { x: -300, z: -1150, alt: 150 }, { x: -560, z: -1000, alt: 145 }, { x: -700, z: -800, alt: 140 },
+  { x: -1000, z: -700, alt: 150 },
 ];
 
 async function main() {
@@ -125,20 +126,18 @@ async function main() {
   const lampPoints = new THREE.Points(lgeo, lmat); lampPoints.frustumCulled = false; lampPoints.visible = false;
   scene.add(lampPoints);
 
-  // ----------------------------------------------------------------- plane + flight
-  progress(0.9, 'Tankuję samolot…'); await tick();
-  const plane = buildPlane();
-  plane.group.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial) setupMat(o.material); });
-  scene.add(plane.group);
-  const flight = new Flight();
+  // ----------------------------------------------------------------- aerial walk
+  progress(0.9, 'Przygotowuję spacer…'); await tick();
+  const walker = new Walker();
+  const flight = walker; // HUD reads the same fields
   const floorAt = (x, z) => {
     if (google.active) return google.heightAt(x, z, terrain.heightAt(x, z));
-    return Math.max(terrain.heightAt(x, z), obstacles.near(x, z, 5));
+    return Math.max(terrain.heightAt(x, z), obstacles.near(x, z, 12));
   };
-  const respawn = () => flight.reset(START.x, START.y, START.z, START.hdg);
+  const respawn = () => { walker.reset(START.x, START.y, START.z, START.yaw, START.pitch); if (window.__snap) window.__snap.cam = true; };
   respawn();
-  const autopilot = new Autopilot(ROUTE);
   const google = new Google3D(scene, camera, renderer);
+  const autopilot = new Tour(ROUTE, (x, z) => terrain.heightAt(x, z));
 
   const hud = new HUD(city, photos, 'assets/overview.jpg');
   // better label anchors: tallest named building near each place
@@ -215,15 +214,9 @@ async function main() {
   // ----------------------------------------------------------------- input
   const keys = new Set();
   let injected = null;
-  const camModes = ['chase', 'cockpit', 'orbit', 'cinema'];
-  const camNames = { chase: 'Pościg', cockpit: 'Kokpit', orbit: 'Orbita', cinema: 'Kinowa' };
-  let camMode = store.get('cam', 'chase');
-  const setCam = (m) => { camMode = m; $('camName').textContent = camNames[m]; store.set('cam', m); cin.pos = null; };
-  const cin = { pos: null };
-  setCam(camMode);
   const toggleTour = () => {
-    if (autopilot.active) autopilot.stop(); else autopilot.start(flight);
-    $('tourName').textContent = autopilot.active ? 'Stop wycieczki' : 'Wycieczka';
+    if (autopilot.active) autopilot.stop(); else autopilot.start(walker);
+    $('tourName').textContent = autopilot.active ? 'Zatrzymaj spacer' : 'Spacer z przewodnikiem';
     document.querySelector('[data-act=tour]').classList.toggle('on', autopilot.active);
   };
   const panels = { help: $('help'), settings: $('settings'), welcome: $('welcome') };
@@ -232,14 +225,15 @@ async function main() {
     if (e.target.tagName === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
     keys.add(e.code);
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
-    if (e.code === 'KeyC') setCam(camModes[(camModes.indexOf(camMode) + 1) % camModes.length]);
+    if (e.code === 'Equal' || e.code === 'NumpadAdd') walker.setPace(1);
+    if (e.code === 'Minus' || e.code === 'NumpadSubtract') walker.setPace(-1);
     if (e.code === 'KeyT') toggleTour();
     if (e.code === 'KeyH') toggle('help');
     if (e.code === 'KeyO') toggle('settings');
     if (e.code === 'KeyN') applyHour(atmo.night > 0.5 ? 13 : 21.5, true);
-    if (e.code === 'KeyR') { respawn(); if (autopilot.active) toggleTour(); }
+    if (e.code === 'Home') { respawn(); if (autopilot.active) toggleTour(); }
     if (e.code === 'Escape') { toggle('help', false); toggle('settings', false); toggle('welcome', false); }
-    if (['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowUp', 'ArrowDown', 'KeyQ', 'KeyE'].includes(e.code) && autopilot.active) toggleTour();
+    if (['KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyQ', 'KeyE', 'Space', 'KeyC', 'ArrowLeft', 'ArrowRight'].includes(e.code) && autopilot.active) toggleTour();
   });
   addEventListener('keyup', (e) => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
@@ -247,25 +241,25 @@ async function main() {
   document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
     const a = b.dataset.act;
     if (a === 'help') toggle('help'); if (a === 'settings') toggle('settings');
-    if (a === 'cam') setCam(camModes[(camModes.indexOf(camMode) + 1) % camModes.length]);
     if (a === 'tour') toggleTour();
     b.blur();
   }));
   $('minimap').addEventListener('click', (ev) => {
     const p = hud.minimapToWorld(ev);
-    const y = Math.max(flight.pos.y, terrain.heightAt(p.x, p.z) + 220);
-    flight.reset(p.x, y, p.z + 700, 0);
+    const y = Math.max(walker.pos.y, terrain.heightAt(p.x, p.z) + 160);
+    if (autopilot.active) toggleTour();
+    walker.reset(p.x, y, p.z + 450, 0, -0.3);
   });
 
-  // mouse look
-  const look = { yaw: 0, pitch: 0, dist: 22, drag: false, lastMove: 0 };
+  // mouse look (drag) + pace (wheel)
+  const look = { drag: false, dyaw: 0, dpitch: 0 };
   canvas.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { look.drag = true; canvas.setPointerCapture(e.pointerId); } });
-  canvas.addEventListener('pointerup', () => { look.drag = false; look.lastMove = performance.now(); });
+  canvas.addEventListener('pointerup', () => { look.drag = false; });
   canvas.addEventListener('pointermove', (e) => {
     if (!look.drag) return;
-    look.yaw -= e.movementX * 0.005; look.pitch = THREE.MathUtils.clamp(look.pitch - e.movementY * 0.004, -1.2, 1.2); look.lastMove = performance.now();
+    look.dyaw -= e.movementX * 0.0032; look.dpitch -= e.movementY * 0.0028;
   });
-  canvas.addEventListener('wheel', (e) => { look.dist = THREE.MathUtils.clamp(look.dist * (1 + Math.sign(e.deltaY) * 0.1), 10, 400); }, { passive: true });
+  canvas.addEventListener('wheel', (e) => { walker.setPace(e.deltaY < 0 ? 1 : -1); }, { passive: true });
 
   // touch controls
   const touch = { x: 0, y: 0, thr: null };
@@ -288,22 +282,27 @@ async function main() {
     };
     tt.addEventListener('pointerdown', (e) => { tt.setPointerCapture(e.pointerId); thrMove(e); });
     tt.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') thrMove(e); });
+    tt.addEventListener('pointerup', () => { touch.thr = 0.5; tk.style.top = '50%'; });
   }
 
   function readInput() {
     const k = injected || keys;
-    const inp = { roll: 0, pitch: 0, yaw: 0, throttle: 0 };
-    if (k.has('KeyA') || k.has('ArrowLeft')) inp.roll += 1;   // A = bank / turn LEFT
-    if (k.has('KeyD') || k.has('ArrowRight')) inp.roll -= 1;
-    if (k.has('ArrowUp')) inp.pitch += 1;
-    if (k.has('ArrowDown')) inp.pitch -= 1;
-    if (k.has('KeyW') || k.has('ShiftLeft')) inp.throttle += 1;
-    if (k.has('KeyS') || k.has('ControlLeft')) inp.throttle -= 1;
-    if (k.has('KeyQ')) inp.yaw += 1;
-    if (k.has('KeyE')) inp.yaw -= 1;
+    const inp = { fwd: 0, strafe: 0, up: 0, turn: 0, look: 0, lookYaw: look.dyaw, lookPitch: look.dpitch };
+    look.dyaw = 0; look.dpitch = 0;
+    if (k.has('KeyW')) inp.fwd += 1;
+    if (k.has('KeyS')) inp.fwd -= 1;
+    if (k.has('KeyA') || k.has('ArrowLeft')) inp.turn += 1;    // A = turn LEFT
+    if (k.has('KeyD') || k.has('ArrowRight')) inp.turn -= 1;
+    if (k.has('KeyQ')) inp.strafe -= 1;
+    if (k.has('KeyE')) inp.strafe += 1;
+    if (k.has('Space') || k.has('KeyR')) inp.up += 1;
+    if (k.has('KeyC') || k.has('KeyF')) inp.up -= 1;
+    if (k.has('ArrowUp')) inp.look += 1;
+    if (k.has('ArrowDown')) inp.look -= 1;
+    if (k.has('ShiftLeft') || k.has('ShiftRight')) { inp.fwd *= 2; inp.strafe *= 2; }
     if (isTouch) {
-      inp.roll += -touch.x; inp.pitch += -touch.y;
-      if (touch.thr !== null) inp.throttle += THREE.MathUtils.clamp((touch.thr - flight.throttle) * 4, -1, 1);
+      inp.turn += -touch.x; inp.fwd += -touch.y;
+      if (touch.thr !== null) inp.up += Math.abs(touch.thr - 0.5) > 0.12 ? (touch.thr - 0.5) * 2 : 0;
     }
     return inp;
   }
@@ -311,9 +310,10 @@ async function main() {
   // test probe (A/D sign check etc.)
   window.__controlsTest = {
     setKeys: (codes) => { injected = codes ? new Set(codes) : null; },
-    getYaw: () => flight.heading(), getRoll: () => flight.bank(), getSpeed: () => flight.speed,
-    getPos: () => flight.pos.toArray(), resetPose: respawn, hop: (x, z, y, hdg = 0) => { flight.reset(x, y ?? terrain.heightAt(x, z) + 200, z, hdg); if (window.__snap) window.__snap.cam = true; },
-    setHour: (h) => applyHour(h, true), setCam, flight, camera, scene, renderer, city3d, obstacles, terrain,
+    getYaw: () => walker.heading(), getSpeed: () => walker.speed,
+    getPos: () => walker.pos.toArray(), resetPose: respawn,
+    hop: (x, z, y, yaw = 0, pitch = -0.3) => { walker.reset(x, y ?? terrain.heightAt(x, z) + 150, z, yaw, pitch); if (window.__snap) window.__snap.cam = true; },
+    setHour: (h) => applyHour(h, true), walker, camera, scene, renderer, city3d, obstacles, terrain, google,
   };
 
   // ----------------------------------------------------------------- resize
@@ -336,8 +336,6 @@ async function main() {
   if (store.get('g3d', false) && store.get('gkey', '')) setGoogle(true);
 
   const clock = new THREE.Clock();
-  const tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), camTarget = new THREE.Vector3();
-  const camPos = new THREE.Vector3().copy(camera.position);
   const snap = { cam: true };
   window.__snap = snap;
   let t = 0;
@@ -346,66 +344,19 @@ async function main() {
     t += dt;
     shared.uTime.value = t; water.timeU.value = t;
 
-    // flight
-    let inp = readInput();
-    if (autopilot.active) inp = autopilot.control(flight, (x, z) => floorAt(x, z));
+    // aerial walk
     const paused = !panels.welcome.hidden;
-    if (!paused) flight.step(dt, inp, floorAt);
-    if (flight.crashed > 0 && flight.crashed < 0.05) {
-      // respawn above the crash site, heading kept
-      const h = flight.heading() * Math.PI / 180;
-      const y = floorAt(flight.pos.x, flight.pos.z) + 160;
-      flight.reset(flight.pos.x, y, flight.pos.z, -h);
+    walker.minAGL = google.active ? 45 : 25;
+    if (!paused) {
+      if (autopilot.active) { autopilot.step(dt, walker); readInput(); }
+      else walker.step(dt, readInput(), floorAt);
     }
-    plane.group.position.copy(flight.pos);
-    plane.group.quaternion.copy(flight.quat);
-    plane.prop.rotation.z += dt * (30 + flight.throttle * 60);
-    plane.beacon.visible = (t % 1.2) < 0.12;
-
-    // camera
-    const fwd = flight.forward(new THREE.Vector3()), up = flight.up(new THREE.Vector3());
-    plane.fuselage.visible = camMode !== 'cockpit';
-    plane.cabin.visible = camMode !== 'cockpit';
-    plane.cockpit.visible = camMode === 'cockpit';
-    plane.spinner.visible = camMode !== 'cockpit';
-    camera.near = camMode === 'cockpit' ? 0.15 : 0.8;
+    camera.position.copy(walker.pos);
+    if (snap.cam) snap.cam = false;
+    camera.rotation.set(walker.pitch, walker.yaw, 0, 'YXZ');
+    camera.near = 1.5;
     camera.far = google.active ? 45000 : 90000;
-    for (const b of plane.blades) b.visible = camMode !== 'cockpit';
-    if (!look.drag && performance.now() - look.lastMove > 2500 && camMode === 'chase') { look.yaw *= 0.95; look.pitch *= 0.95; }
-    if (camMode === 'chase' || camMode === 'orbit') {
-      const yawQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-fwd.x, -fwd.z));
-      const dist = camMode === 'chase' ? look.dist : look.dist * 1.6;
-      const off = new THREE.Vector3(0, 0, dist).applyAxisAngle(new THREE.Vector3(1, 0, 0), -0.2 + look.pitch * -1 - Math.asin(fwd.y) * 0.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), look.yaw);
-      off.applyQuaternion(yawQ);
-      tmpV.copy(flight.pos).add(off);
-      const k = camMode === 'chase' ? 1 - Math.exp(-dt * 5) : 1 - Math.exp(-dt * 10);
-      camPos.lerp(tmpV, snap.cam ? 1 : k); snap.cam = false;
-      const g = floorAt(camPos.x, camPos.z) + 3;
-      if (camPos.y < g) camPos.y = g;
-      camera.position.copy(camPos);
-      camera.up.set(0, 1, 0).lerp(up, camMode === 'chase' ? 0.25 : 0).normalize();
-      camTarget.copy(flight.pos).addScaledVector(fwd, 12).y += 2;
-      camera.lookAt(camTarget);
-      camera.fov = 62;
-    } else if (camMode === 'cockpit') {
-      tmpV.set(0, 0.64, -1.05).applyQuaternion(flight.quat).add(flight.pos);
-      camera.position.copy(tmpV); camPos.copy(tmpV);
-      tmpQ.setFromEuler(new THREE.Euler(look.pitch * 0.6, look.yaw, 0, 'YXZ'));
-      camera.quaternion.copy(flight.quat).multiply(tmpQ);
-      camera.fov = 72;
-    } else if (camMode === 'cinema') {
-      if (!cin.pos || cin.pos.distanceTo(flight.pos) > 900 || (tmpV.copy(flight.pos).sub(cin.pos).dot(fwd) > 260)) {
-        const side = Math.random() < 0.5 ? -1 : 1;
-        const right = flight.right(new THREE.Vector3());
-        cin.pos = flight.pos.clone().addScaledVector(fwd, 320 + Math.random() * 200).addScaledVector(right, side * (40 + Math.random() * 90));
-        cin.pos.y = Math.max(floorAt(cin.pos.x, cin.pos.z) + 25 + Math.random() * 60, flight.pos.y - 40 + Math.random() * 60);
-      }
-      camera.position.copy(cin.pos); camPos.copy(cin.pos);
-      camera.up.set(0, 1, 0);
-      camera.lookAt(flight.pos);
-      const d = cin.pos.distanceTo(flight.pos);
-      camera.fov = THREE.MathUtils.clamp(2 * Math.atan(28 / d) * 180 / Math.PI, 8, 50);
-    }
+    camera.fov = 60;
     camera.updateProjectionMatrix();
 
     // world updates
@@ -419,7 +370,7 @@ async function main() {
     // HUD
     const gh = terrain.heightAt(flight.pos.x, flight.pos.z);
     hud.update(dt, flight, google.active ? floorAt(flight.pos.x, flight.pos.z) : gh, google.active ? 0 : obstacles.near(flight.pos.x, flight.pos.z, 5), camera,
-      { heightAt: (x, z) => terrain.heightAt(x, z), route: autopilot.active ? ROUTE : null, tour: autopilot.active });
+      { heightAt: (x, z) => terrain.heightAt(x, z), route: autopilot.active ? ROUTE : null, tour: autopilot.active, pace: walker.pace });
     $('gAttrib').textContent = google.active ? ' · 3D: Google (' + google.provider + ') ' + google.attribution : '';
 
     // render

@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 export class HUD {
   constructor(city, photos, overviewUrl) {
     this.city = city; this.W = city.W; this.H = city.W / 2;
-    this.el = { spd: $('spd'), alt: $('alt'), agl: $('agl'), vsi: $('vsi'), thr: $('thr'), tape: $('compassTape'), place: $('place'), placeImg: $('placeImg'), placeName: $('placeName'), placeDist: $('placeDist'), warn: $('warn'), labels: $('labels'), fps: $('fps') };
+    this.el = { spd: $('spd'), alt: $('alt'), agl: $('agl'), vsi: $('vsi'), thr: $('thr'), tape: $('compassTape'), place: $('place'), placeImg: $('placeImg'), placeName: $('placeName'), placeDist: $('placeDist'), warn: $('warn'), labels: $('labels'), fps: $('fps'), paceVal: $('paceVal') };
     // compass ticks
     const tape = this.el.tape;
     const names = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
@@ -48,14 +48,11 @@ export class HUD {
     e.agl.textContent = Math.max(0, Math.round(agl));
     e.vsi.textContent = (flight.vy >= 0 ? '+' : '') + flight.vy.toFixed(1);
     e.thr.style.width = `${Math.round(flight.throttle * 100)}%`;
+    if (extra.pace && e.paceVal) e.paceVal.textContent = `${Math.round(extra.pace * 3.6)} km/h`;
     const hdg = flight.heading();
     e.tape.style.transform = `translateX(${170 - (hdg + 360) * this.pxPerDeg}px)`;
     // warnings
-    let warn = '';
-    if (flight.crashed > 0) warn = 'KOLIZJA — restart za chwilę';
-    else if (flight.stall) warn = 'PRZECIĄGNIĘCIE — dodaj gazu, opuść nos';
-    else if (agl < 45 && flight.vy < -2) warn = 'ZIEMIA! PODCIĄGNIJ';
-    else if (extra.tour) warn = '';
+    let warn = extra.tour ? 'Spacer z przewodnikiem — dowolny klawisz ruchu przejmuje stery' : '';
     e.warn.hidden = !warn; if (warn) e.warn.textContent = warn;
 
     // nearby place card

@@ -136,3 +136,6 @@ kbd { font: 700 12px 'JetBrains Mono', monospace; min-width: 26px; text-align: c
 .how code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 5px; }
 #gStatus2 { margin-top: 10px; min-height: 18px; }
 @media (max-width: 720px) { .modes { grid-template-columns: 1fr; } }
+
+#paceVal { color: var(--ink); font-weight: 700; margin-left: 4px; letter-spacing: 0; }
+.gauge.small:nth-of-type(4) { display: none; }

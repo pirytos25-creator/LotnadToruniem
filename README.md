@@ -1,6 +1,6 @@
 # Lot nad Toruniem
 
-Przeglądarkowy lot małym samolotem nad Toruniem. Jeden `index.html`, czysty JavaScript i Three.js. Bez serwera i bez budowania, więc działa od razu na GitHub Pages.
+Spokojny spacer w powietrzu nad Toruniem: unosisz się nad Starówką i Wisłą jak dron albo ptak, bez samolotu i bez rozbijania się. Jeden `index.html`, czysty JavaScript i Three.js. Bez serwera i bez budowania, więc działa od razu na GitHub Pages.
 
 **Dwa tryby:**
 
@@ -11,17 +11,18 @@ Przeglądarkowy lot małym samolotem nad Toruniem. Jeden `index.html`, czysty Ja
 
 | Klawisz | Działanie |
 |---|---|
-| W / S | gaz |
-| A / D | przechył i skręt w lewo / prawo |
-| ↑ / ↓ | nos w górę / w dół |
-| Q / E | ster kierunku |
-| C | kamera: pościg / kokpit / orbita / kinowa |
-| T | wycieczka automatyczna nad zabytkami |
+| W / S | naprzód / wstecz |
+| A / D | obrót w lewo / prawo |
+| Q / E | w bok |
+| Spacja / C | w górę / w dół |
+| ↑ / ↓ | spojrzenie w górę / w dół |
+| mysz | przeciąganie = rozglądanie, kółko = tempo spaceru |
+| Shift | chwilowo szybciej |
+| T | spacer z przewodnikiem (płynna trasa nad Starówką, Nowym Miastem i Wisłą) |
 | N | dzień / noc |
-| R | restart |
-| mysz | przeciąganie = rozglądanie, kółko = odległość kamery |
+| Home | powrót do punktu startu |
 
-Minimapa jest klikalna (przelot w wybrane miejsce). W ustawieniach (⚙) jest pora dnia, jakość, cienie, chmury, drzewa i nazwy zabytków.
+Nie da się zejść niżej niż ~25 m nad dachy (w trybie Google 3D ~45 m), bo z bliska fotogrametria robi się rozmyta. Minimapa jest klikalna. W ustawieniach (⚙) są pora dnia, jakość, cienie, chmury, drzewa i nazwy zabytków.
 
 ## Uruchomienie lokalne
 
@@ -47,14 +48,14 @@ src/trees.js        drzewa (instancing, 2 poziomy LOD)
 src/bridges.js      mosty i wiadukty (pomosty, filary, kratownice, łuk)
 src/sky.js          niebo, słońce dla 53°N, mgła, gwiazdy, oświetlenie IBL
 src/materials.js    shadery elewacji/dachów (okna, światła nocą, zdjęcie na dachach)
-src/flight.js       model lotu + autopilot wycieczki
+src/walk.js         spokojny ruch w powietrzu + spacer z przewodnikiem (spline)
 src/google3d.js     tryb fotorealistyczny (Google 3D Tiles / Cesium ion)
 vendor/             three.js r186 + dodatki (CSM, Sky, bloom, 3d-tiles-renderer, earcut)
 assets/             upieczone dane (patrz tools/README.md)
 tools/              skrypty do pobrania i upieczenia danych
 ```
 
-Test sterowania (konsola): `__controlsTest.setKeys(['KeyA'])` powinno zwiększać przechył (`getRoll() > 0`) i skręcać w lewo (kurs `getYaw()` maleje).
+Test sterowania (konsola): `__controlsTest.setKeys(['KeyA'])` obraca w lewo (kurs `getYaw()` maleje).
 
 ## Atrybucja
 

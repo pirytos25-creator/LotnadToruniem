@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lot nad Toruniem</title>
-<meta name="description" content="Przeglądarkowy lot nad realistycznym Toruniem: budynki z OpenStreetMap, zdjęcia lotnicze, model terenu, Wisła, mosty i zabytki Starówki.">
+<meta name="description" content="Spokojny spacer w powietrzu nad realistycznym Toruniem: budynki z OpenStreetMap, zdjęcia lotnicze, model terenu, Wisła, mosty i zabytki Starówki.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23132033'/%3E%3Cpath d='M8 36l20-4 6-18h5l-2 17 17-3 2 4-19 7 3 10h-4l-6-8-20 2z' fill='%23f2c14e'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +37,7 @@
     <div class="gauge"><span class="g-lbl">WYSOKOŚĆ</span><span id="alt" class="g-val">0</span><span class="g-unit">m n.p.m.</span></div>
     <div class="gauge small"><span class="g-lbl">NAD ZIEMIĄ</span><span id="agl" class="g-val">0</span><span class="g-unit">m</span></div>
     <div class="gauge small"><span class="g-lbl">WZNOSZENIE</span><span id="vsi" class="g-val">0</span><span class="g-unit">m/s</span></div>
-    <div class="throttle"><span class="g-lbl">GAZ</span><div class="thr-bar"><i id="thr"></i></div></div>
+    <div class="throttle"><span class="g-lbl">TEMPO SPACERU <b id="paceVal"></b></span><div class="thr-bar"><i id="thr"></i></div></div>
   </div>
   <div id="place" class="place" hidden>
     <img id="placeImg" alt="">
@@ -47,8 +47,7 @@
   <div id="warn" class="warn" hidden></div>
   <div class="hud-bottom">
     <button class="btn" data-act="help" title="Sterowanie (H)">? Sterowanie</button>
-    <button class="btn" data-act="cam" title="Kamera (C)">🎥 <span id="camName">Pościg</span></button>
-    <button class="btn" data-act="tour" title="Wycieczka automatyczna (T)">✈ <span id="tourName">Wycieczka</span></button>
+    <button class="btn" data-act="tour" title="Spacer z przewodnikiem (T)">🕊 <span id="tourName">Spacer z przewodnikiem</span></button>
     <button class="btn" data-act="settings" title="Ustawienia (O)">⚙ Ustawienia</button>
   </div>
   <div id="labels"></div>
@@ -97,19 +96,19 @@
 <div id="help" class="panel" hidden>
   <div class="panel-h">Sterowanie <button class="x" data-close="help">×</button></div>
   <div class="keys">
-    <div><kbd>W</kbd><kbd>S</kbd><span>gaz / hamowanie</span></div>
-    <div><kbd>A</kbd><kbd>D</kbd><span>przechył w lewo / prawo (skręt)</span></div>
-    <div><kbd>↑</kbd><kbd>↓</kbd><span>nos w górę / w dół</span></div>
-    <div><kbd>Q</kbd><kbd>E</kbd><span>ster kierunku</span></div>
-    <div><kbd>C</kbd><span>kamera: pościg / kokpit / orbita / kinowa</span></div>
-    <div><kbd>T</kbd><span>wycieczka automatyczna nad zabytkami</span></div>
+    <div><kbd>W</kbd><kbd>S</kbd><span>naprzód / wstecz</span></div>
+    <div><kbd>A</kbd><kbd>D</kbd><span>obrót w lewo / prawo</span></div>
+    <div><kbd>Q</kbd><kbd>E</kbd><span>w bok</span></div>
+    <div><kbd>Spacja</kbd><kbd>C</kbd><span>w górę / w dół</span></div>
+    <div><kbd>↑</kbd><kbd>↓</kbd><span>spojrzenie w górę / w dół</span></div>
+    <div><kbd>mysz</kbd><span>przeciągnij, by się rozejrzeć · kółko = tempo spaceru</span></div>
+    <div><kbd>Shift</kbd><span>chwilowo szybciej</span></div>
+    <div><kbd>T</kbd><span>spacer z przewodnikiem nad Starówką i Wisłą</span></div>
     <div><kbd>N</kbd><span>dzień ↔ noc</span></div>
-    <div><kbd>R</kbd><span>restart nad Wisłą</span></div>
-    <div><kbd>H</kbd><span>ta pomoc</span></div>
-    <div><kbd>mysz</kbd><span>przeciągnij, by rozejrzeć się; kółko = odległość kamery</span></div>
+    <div><kbd>Home</kbd><span>wróć do punktu startu</span></div>
   </div>
-  <p class="muted">Na telefonie: lewa połowa ekranu to drążek, prawa to gaz.</p>
-  <button class="btn primary" data-close="help">Lecimy!</button>
+  <p class="muted">Nie ma tu rozbijania się: unosisz się spokojnie nad miastem i nie zejdziesz niżej niż kilkadziesiąt metrów nad dachy. Na telefonie lewy drążek to ruch, prawy suwak to wysokość.</p>
+  <button class="btn primary" data-close="help">Ruszamy</button>
 </div>
 
 <!-- settings -->

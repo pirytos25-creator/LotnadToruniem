@@ -161,6 +161,7 @@ export function buildCity(city, terrain, obstacles, opts = {}) {
     let ground = Infinity;
     for (const p of pts) ground = Math.min(ground, terrain.heightAt(p[0], p[1]));
     ground = Math.min(ground, terrain.heightAt(cx, cz));
+    if (ground < 33.6 && b.h > 6) b.h = 5.5; // moored barges / boats standing in the river
     const top = ground + b.h;
     const eave = pitched ? top - b.rh : top;
     const bottom = b.mh > 0.5 ? ground + b.mh : ground - 2.5;
@@ -371,7 +372,7 @@ export function buildCity(city, terrain, obstacles, opts = {}) {
   });
 
   // ---------- city walls (brick)
-  const brick = lin('8f4630');
+  const brick = lin('6f3a2b');
   for (const w of city.walls) {
     const p = w.p;
     const ci = Math.min(N - 1, Math.max(0, Math.floor((p[0] + H) / CS))), cj = Math.min(N - 1, Math.max(0, Math.floor((p[1] + H) / CS)));
@@ -390,7 +391,7 @@ export function buildCity(city, terrain, obstacles, opts = {}) {
         quad(WB, A, B, [B[0], tb, B[2]], [A[0], ta, A[2]], nTmp, brick, [0, -0.5, len / 4, -0.5, len / 4, w.h / 4, 0, w.h / 4], 7, 3);
       }
       const A1 = [ax + nx * t, ta, az + nz * t], B1 = [bx + nx * t, tb, bz + nz * t], A2 = [ax - nx * t, ta, az - nz * t], B2 = [bx - nx * t, tb, bz - nz * t];
-      quad(RB, A1, B1, B2, A2, up, lin('7a3a28'), [0, 0, len / 2, 0, len / 2, 1, 0, 1], 3, 3);
+      quad(RB, A1, B1, B2, A2, up, lin('5a3226'), [0, 0, len / 2, 0, len / 2, 1, 0, 1], 3, 3);
       obstacles.fillPolygon([A1[0], A1[2], B1[0], B1[2], B2[0], B2[2], A2[0], A2[2]], Math.max(ta, tb));
     }
   }
