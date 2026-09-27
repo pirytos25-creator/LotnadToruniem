@@ -369,6 +369,7 @@ async function main() {
     plane.cockpit.visible = camMode === 'cockpit';
     plane.spinner.visible = camMode !== 'cockpit';
     camera.near = camMode === 'cockpit' ? 0.15 : 0.8;
+    camera.far = google.active ? 45000 : 90000;
     for (const b of plane.blades) b.visible = camMode !== 'cockpit';
     if (!look.drag && performance.now() - look.lastMove > 2500 && camMode === 'chase') { look.yaw *= 0.95; look.pitch *= 0.95; }
     if (camMode === 'chase' || camMode === 'orbit') {

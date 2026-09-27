@@ -14,7 +14,7 @@ export class Google3D {
   }
   setShade(k) {
     this.shade = k;
-    if (this.tiles) this.tiles.group.traverse(o => { if (o.material && o.material.userData.g3d) o.material.color.setScalar(k); });
+    if (this.tiles) this.tiles.group.traverse(o => { if (o.material && o.material.userData.g3d && o.material.color) o.material.color.setScalar(k); });
   }
   async enable(key, onStatus) {
     if (this.tiles) this.disable();
@@ -35,7 +35,18 @@ export class Google3D {
     tiles.registerPlugin(new X.ReorientationPlugin({ lat: ORIGIN.lat * Math.PI / 180, lon: ORIGIN.lon * Math.PI / 180, height: ORIGIN.geoid }));
     tiles.setCamera(this.camera);
     tiles.setResolutionFromRenderer(this.camera, this.renderer);
-    tiles.errorTarget = 14;
+    // Photorealistic tiles are heavy: the default 0.4 GB cache fills up quickly and then the
+    // renderer stops refining (blurry, flat city). Give it a desktop-sized budget.
+    const GB = 2 ** 30;
+    const big = (navigator.deviceMemory || 8) >= 8;
+    tiles.lruCache.minBytesSize = (big ? 1.0 : 0.45) * GB;
+    tiles.lruCache.maxBytesSize = (big ? 1.4 : 0.6) * GB;
+    tiles.lruCache.minSize = 9000; tiles.lruCache.maxSize = 14000;
+    tiles.downloadQueue.maxJobs = 40;
+    tiles.parseQueue.maxJobs = 12;
+    this.errorTarget = 10;
+    tiles.errorTarget = this.errorTarget;
+    window.__g3d = this;
     let failed = false;
     tiles.addEventListener('load-error', (e) => {
       failed = true;
@@ -46,7 +57,7 @@ export class Google3D {
                : 'Google odrzucił klucz (sprawdź, czy włączone jest Map Tiles API i czy klucz nie ma ograniczeń domeny).')
         : `Błąd ładowania: ${msg}`);
     });
-    tiles.addEventListener('load-root-tileset', () => { if (!failed) onStatus('Połączono. Kafelki 3D spływają…'); });
+    tiles.addEventListener('load-root-tileset', () => { tiles.errorTarget = this.errorTarget; if (!failed) onStatus('Połączono. Kafelki 3D spływają…'); });
     tiles.addEventListener('tiles-load-end', () => { if (!failed) onStatus(`Fotorealistyczny Toruń aktywny (${this.provider}).`); });
     // ENU frame from the plugin: X west, Z north -> rotate to X east, Z south
     this.wrapper = new THREE.Group(); this.wrapper.rotation.y = Math.PI; this.wrapper.add(tiles.group);
@@ -57,16 +68,22 @@ export class Google3D {
           o.castShadow = false; o.receiveShadow = false;
           // photogrammetry already contains lighting; keep it unlit-ish
           const m = o.material;
-          if (m && !m.userData.g3d) {
-            const b = new THREE.MeshBasicMaterial({ map: m.map, fog: true }); b.color.setScalar(this.shade);
-            if (b.map) b.map.colorSpace = THREE.SRGBColorSpace;
-            b.userData.g3d = true; o.material = b; m.dispose();
-          }
+          if (m && m.map && !m.userData.g3d) {
+            const b = new THREE.MeshBasicMaterial({ map: m.map, fog: true, side: m.side });
+            b.color.setScalar(this.shade);
+            b.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+            b.userData.g3d = true; o.material = b;
+          } else if (m) { m.userData.g3d = true; }
         }
       });
     });
     this.scene.add(this.wrapper);
     this.tiles = tiles; this.active = true;
+  }
+  stats() {
+    const t = this.tiles; if (!t) return null;
+    let maxDepth = 0; t.visibleTiles.forEach(x => { maxDepth = Math.max(maxDepth, x.internal ? x.internal.depth : (x.__depth || 0)); });
+    return { visible: t.visibleTiles.size, downloading: t.stats.downloading, parsing: t.stats.parsing, loaded: t.stats.loaded, cacheMB: Math.round(t.lruCache.cachedBytes / 1048576), full: t.lruCache.isFull(), errorTarget: t.errorTarget, maxDepth };
   }
   disable() {
     if (!this.tiles) return;
@@ -78,6 +95,7 @@ export class Google3D {
     if (!this.tiles) return;
     this.camera.updateMatrixWorld();
     this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
+    if (this.tiles.errorTarget !== this.errorTarget) this.tiles.errorTarget = this.errorTarget;
     this.tiles.update();
     if (this.tiles.getAttributions) {
       const a = []; this.tiles.getAttributions(a);
